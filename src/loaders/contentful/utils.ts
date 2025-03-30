@@ -1,9 +1,4 @@
 import { createClient } from "contentful";
-import {
-  ArticleApiResponseSchema,
-  JobApiResponseSchema,
-  DownloadApiResponseSchema,
-} from "~/loaders/contentful/schemas";
 import { z } from "astro/zod";
 
 const client = createClient({
@@ -14,28 +9,30 @@ const client = createClient({
   host: import.meta.env.DEV ? "preview.contentful.com" : "cdn.contentful.com",
 });
 
-async function fetchPaginatedArticles(
+async function fetchPaginatedContent<T extends z.ZodType>(
+  contentType: string,
+  schema: T,
   skip: number,
   limit: number,
-): Promise<z.output<typeof ArticleApiResponseSchema>> {
-  let articles;
+): Promise<z.output<T>> {
+  let entries;
   try {
-    articles = await client.getEntries({
-      content_type: "article",
+    entries = await client.getEntries({
+      content_type: contentType,
       limit,
       skip,
     });
   } catch (error) {
-    throw new Error("Failed to fetch articles from Contentful", {
+    throw new Error(`Failed to fetch ${contentType} from Contentful`, {
       cause: error,
     });
   }
 
-  const parsedResponse = ArticleApiResponseSchema.safeParse(articles);
+  const parsedResponse = schema.safeParse(entries);
 
   if (!parsedResponse.success) {
     throw new Error(
-      `Failed to parse response from Contentful.\n${parsedResponse.error.issues
+      `Failed to parse ${contentType} response from Contentful.\n${parsedResponse.error.issues
         .map((issue) => issue.message)
         .join("\n")}`,
     );
@@ -44,108 +41,21 @@ async function fetchPaginatedArticles(
   return parsedResponse.data;
 }
 
-async function fetchPaginatedDownloads(
-  skip: number,
-  limit: number,
-): Promise<z.output<typeof DownloadApiResponseSchema>> {
-  let downloads;
-  try {
-    downloads = await client.getEntries({
-      content_type: "download",
-      limit,
-      skip,
-    });
-  } catch (error) {
-    throw new Error("Failed to fetch downloads from Contentful", {
-      cause: error,
-    });
-  }
-
-  const parsedResponse = DownloadApiResponseSchema.safeParse(downloads);
-
-  if (!parsedResponse.success) {
-    throw new Error(
-      `Failed to parse response from Contentful.\n${parsedResponse.error.issues
-        .map((issue) => issue.message)
-        .join("\n")}`,
-    );
-  }
-  return parsedResponse.data;
-}
-
-export async function fetchPaginatedJobs(
-  skip: number,
-  limit: number,
-): Promise<z.output<typeof JobApiResponseSchema>> {
-  let jobs;
-  try {
-    jobs = await client.getEntries({
-      content_type: "job",
-      limit,
-      skip,
-    });
-  } catch (error) {
-    throw new Error("Failed to fetch jobs from Contentful", {
-      cause: error,
-    });
-  }
-
-  const parsedResponse = JobApiResponseSchema.safeParse(jobs);
-  if (!parsedResponse.success) {
-    throw new Error(
-      `Failed to parse response from Contentful.\n${parsedResponse.error.issues
-        .map((issue) => issue.message)
-        .join("\n")}`,
-    );
-  }
-
-  return parsedResponse.data;
-}
-
-export async function fetchAllArticles() {
+export async function fetchAllContent<T extends z.ZodType>(
+  contentType: string,
+  schema: T,
+): Promise<z.output<T>["items"]> {
   let limit = 1000;
   let skip = 0;
   let total = 0;
   let entries = [];
 
   do {
-    const data = await fetchPaginatedArticles(skip, limit);
+    const data = await fetchPaginatedContent(contentType, schema, skip, limit);
     total = data.total;
     skip += limit;
     entries.push(...data.items);
-  } while (skip + limit < total);
-
-  return entries;
-}
-
-export async function fetchAllDownloads() {
-  let limit = 1000;
-  let skip = 0;
-  let total = 0;
-  let entries = [];
-
-  do {
-    const data = await fetchPaginatedDownloads(skip, limit);
-    total = data.total;
-    skip += limit;
-    entries.push(...data.items);
-  } while (skip + limit < total);
-
-  return entries;
-}
-
-export async function fetchAllJobs() {
-  let limit = 1000;
-  let skip = 0;
-  let total = 0;
-  let entries = [];
-
-  do {
-    const data = await fetchPaginatedJobs(skip, limit);
-    total = data.total;
-    skip += limit;
-    entries.push(...data.items);
-  } while (skip + limit < total);
+  } while (skip < total);
 
   return entries;
 }

@@ -1,22 +1,24 @@
 import { type Loader } from "astro/loaders";
 import { documentToHtmlString } from "~/utils/contentful-rich-renderer";
 import {
+  ArticleApiResponseSchema,
   ArticleLoaderSchema,
   DownloadLoaderSchema,
+  DownloadApiResponseSchema,
+  JobApiResponseSchema,
   JobLoaderSchema,
 } from "~/loaders/contentful/schemas";
-import {
-  fetchAllArticles,
-  fetchAllDownloads,
-  fetchAllJobs,
-} from "~/loaders/contentful/utils";
+import { fetchAllContent } from "~/loaders/contentful/utils";
 
 export function contentfulArticleLoader(): Loader {
   return {
     name: "contentful-article-loader",
     async load({ logger, store, parseData }) {
       logger.info("Loading article data from Contentful...");
-      const articles = await fetchAllArticles();
+      const articles = await fetchAllContent(
+        "article",
+        ArticleApiResponseSchema,
+      );
       for (const article of articles) {
         const parsedData = await parseData({
           id: article.slug,
@@ -40,8 +42,7 @@ export function contentfulJobLoader(): Loader {
     name: "contentful-job-loader",
     async load({ logger, store, parseData }) {
       logger.info("Loading job data from Contentful...");
-
-      const jobs = await fetchAllJobs();
+      const jobs = await fetchAllContent("job", JobApiResponseSchema);
       for (const job of jobs) {
         const parsedData = await parseData({
           id: job.slug,
@@ -65,7 +66,10 @@ export function contentfulDownloadLoader(): Loader {
     name: "contentful-download-loader",
     async load({ logger, store, parseData }) {
       logger.info("Loading download data from Contentful...");
-      const downloads = await fetchAllDownloads();
+      const downloads = await fetchAllContent(
+        "download",
+        DownloadApiResponseSchema,
+      );
       for (const download of downloads) {
         const parsedData = await parseData({
           id: download.slug,
