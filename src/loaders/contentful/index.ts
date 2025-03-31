@@ -3,10 +3,12 @@ import { documentToHtmlString } from "~/utils/contentful-rich-renderer";
 import {
   ArticleApiResponseSchema,
   ArticleLoaderSchema,
+  EventApiResponseSchema,
   DownloadLoaderSchema,
   DownloadApiResponseSchema,
   JobApiResponseSchema,
   JobLoaderSchema,
+  EventLoaderSchema,
 } from "~/loaders/contentful/schemas";
 import { fetchAllContent } from "~/loaders/contentful/utils";
 
@@ -85,5 +87,30 @@ export function contentfulDownloadLoader(): Loader {
       }
     },
     schema: DownloadLoaderSchema,
+  };
+}
+
+export function contentfulEventLoader(): Loader {
+  return {
+    name: "contentful-event-loader",
+    async load({ logger, store, parseData }) {
+      logger.info("Loading event data from Contentful...");
+
+      const events = await fetchAllContent("event", EventApiResponseSchema);
+      for (const event of events) {
+        const parsedData = await parseData({
+          id: event.slug,
+          data: event,
+        });
+        store.set({
+          id: event.slug,
+          data: parsedData,
+          rendered: {
+            html: documentToHtmlString(event.content),
+          },
+        });
+      }
+    },
+    schema: EventLoaderSchema,
   };
 }

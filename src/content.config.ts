@@ -3,6 +3,7 @@ import {
   contentfulArticleLoader,
   contentfulDownloadLoader,
   contentfulJobLoader,
+  contentfulEventLoader,
 } from "./loaders/contentful";
 
 const downloads = defineCollection({
@@ -17,4 +18,8 @@ const articles = defineCollection({
   loader: contentfulArticleLoader(),
 });
 
-export const collections = { jobs, articles, downloads };
+const events = defineCollection({
+  loader: contentfulEventLoader(),
+});
+
+export const collections = { jobs, articles, downloads, events };
